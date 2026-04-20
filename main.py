@@ -190,3 +190,46 @@ def landmark_heuristic(node, target_variants):
             best_lb = lb
 
     return best_lb
+
+# Dijkstra's algorithm
+def run_dijkstra(start_station, end_station):
+    H, src, dst = build_query_graph(start_station, end_station)
+
+    start_time = time.perf_counter()
+
+    distances = {src: 0}
+    previous = {}
+    visited = set()
+    counter = 0
+    pq = [(0, counter, src)]
+    nodes_explored = 0
+
+    while pq:
+        current_dist, _, current = heapq.heappop(pq)
+
+        if current in visited:
+            continue
+
+        visited.add(current)
+        nodes_explored += 1
+
+        if current == dst:
+            break
+
+        for neighbor in H.neighbors(current):
+            weight = H[current][neighbor]["weight"]
+            new_dist = current_dist + weight
+
+            if neighbor not in distances or new_dist < distances[neighbor]:
+                distances[neighbor] = new_dist
+                previous[neighbor] = current
+                counter += 1
+                heapq.heappush(pq, (new_dist, counter, neighbor))
+
+    end_time = time.perf_counter()
+
+    if dst not in distances:
+        return [], math.inf, end_time - start_time, nodes_explored
+
+    path = reconstruct_path(previous, src, dst)
+    return strip_virtual_nodes(path), distances[dst], end_time - start_time, nodes_explored
