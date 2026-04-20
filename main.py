@@ -48,3 +48,10 @@ for _, row in df.iterrows():
     G.add_edge((a, line), (b, line), weight=t)
     lines_at_station[a].add(line)
     lines_at_station[b].add(line)
+
+for station, lines in lines_at_station.items():
+    lines = list(lines)
+    for i in range(len(lines)):
+        for j in range(i + 1, len(lines)):
+            la, lb = lines[i], lines[j]
+            G.add_edge((station, la), (station, lb), weight=CHANGE_PENALTY)
