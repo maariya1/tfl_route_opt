@@ -21,3 +21,15 @@ if missing:
 
 all_names = set(df["station1"]).union(set(df["station2"]))
 canon_by_lower = {str(n).strip().lower(): str(n).strip() for n in all_names}
+def canon(name: str) -> str:
+    key = str(name).strip().lower()
+
+    if key in canon_by_lower:
+        return canon_by_lower[key]
+
+    cands = get_close_matches(key, canon_by_lower.keys(), n=5, cutoff=0.75)
+    if cands:
+        suggestions = ", ".join(canon_by_lower[c] for c in cands)
+        raise ValueError(f"Station '{name}' not found. Did you mean: {suggestions}?")
+
+    raise ValueError(f"Station '{name}' not found.")
