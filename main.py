@@ -129,3 +129,64 @@ def format_route_segments(path):
 
     output.append(f"{seg_start} -> {path[-1][0]} ({current_line}, {seg_time:.0f} min)")
     return "\n".join(output)
+
+# preprocessing (A* and Frankenalgorithm)
+# landmark-based heuristic values
+LANDMARK_STATIONS = [
+    "Baker Street",
+    "Bank",
+    "King's Cross St. Pancras",
+    "Oxford Circus",
+    "Stratford",
+    "Victoria"
+]
+
+landmark_distances = {}
+def choose_landmark_node(station_name):
+    vs = variants(station_name)
+    if not vs:
+        raise ValueError(f"No variants found for landmark {station_name}")
+    return vs[0]
+def preprocess_landmarks():
+    global landmark_distances
+    landmark_distances = {}
+
+    for station in LANDMARK_STATIONS:
+        try:
+            node = choose_landmark_node(station)
+            distances = nx.single_source_dijkstra_path_length(G, node, weight="weight")
+            landmark_distances[node] = distances
+        except Exception as e:
+            print(f"Skipping landmark {station}: {e}")
+
+
+def landmark_heuristic(node, target_variants):
+    """
+    Admissible lower bound:
+    h(u,t) = max over landmarks L of |d(L,t) - d(L,u)|
+
+    For destination with multiple line variants, use the minimum
+    landmark distance to any destination variant.
+    """
+    if node in ("__SRC__", "__DST__"):
+        return 0
+
+    best_lb = 0
+
+    for landmark_node, dist_map in landmark_distances.items():
+        if node not in dist_map:
+            continue
+
+        d_l_u = dist_map[node]
+
+        target_dists = [dist_map[t] for t in target_variants if t in dist_map]
+        if not target_dists:
+            continue
+
+        d_l_t = min(target_dists)
+        lb = abs(d_l_t - d_l_u)
+
+        if lb > best_lb:
+            best_lb = lb
+
+    return best_lb
