@@ -33,3 +33,18 @@ def canon(name: str) -> str:
         raise ValueError(f"Station '{name}' not found. Did you mean: {suggestions}?")
 
     raise ValueError(f"Station '{name}' not found.")
+
+# build graph, nodes = (station,line), edges = (travel time)
+# interchanges += 3 min penalty
+G = nx.Graph()
+lines_at_station = defaultdict(set)
+
+for _, row in df.iterrows():
+    a = str(row["station1"]).strip()
+    b = str(row["station2"]).strip()
+    t = float(row["time_mins"])
+    line = str(row["line"]).strip()
+
+    G.add_edge((a, line), (b, line), weight=t)
+    lines_at_station[a].add(line)
+    lines_at_station[b].add(line)
