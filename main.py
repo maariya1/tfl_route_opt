@@ -329,3 +329,19 @@ def run_bidirectional_dijkstra(start_station, end_station):
     full_path = path_forward + backward_part
     return strip_virtual_nodes(full_path), best_distance, end_time - start_time, nodes_explored
 
+# Floyd-Warshall algorithm
+def run_floyd_warshall(start_station, end_station):
+    H, src, dst = build_query_graph(start_station, end_station)
+
+    start_time = time.perf_counter()
+    pred, dist = nx.floyd_warshall_predecessor_and_distance(H, weight="weight")
+    end_time = time.perf_counter()
+
+    if src not in dist or dst not in dist[src]:
+        return [], math.inf, end_time - start_time, len(H.nodes)
+
+    path = nx.reconstruct_path(src, dst, pred)
+    total_cost = dist[src][dst]
+    nodes_explored = len(H.nodes)
+
+    return strip_virtual_nodes(path), total_cost, end_time - start_time, nodes_explored
