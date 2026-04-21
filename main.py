@@ -345,3 +345,48 @@ def run_floyd_warshall(start_station, end_station):
     nodes_explored = len(H.nodes)
 
     return strip_virtual_nodes(path), total_cost, end_time - start_time, nodes_explored
+
+# A* (using landmark heuristic)
+def run_astar(start_station, end_station):
+    H, src, dst = build_query_graph(start_station, end_station)
+    end_variants = variants(end_station)
+
+    start_time = time.perf_counter()
+
+    g_score = {src: 0}
+    previous = {}
+    visited = set()
+    counter = 0
+    open_set = [(0, counter, src)]
+    nodes_explored = 0
+
+    while open_set:
+        _, _, current = heapq.heappop(open_set)
+
+        if current in visited:
+            continue
+
+        visited.add(current)
+        nodes_explored += 1
+
+        if current == dst:
+            break
+
+        for neighbor in H.neighbors(current):
+            tentative_g = g_score[current] + H[current][neighbor]["weight"]
+
+            if neighbor not in g_score or tentative_g < g_score[neighbor]:
+                g_score[neighbor] = tentative_g
+                previous[neighbor] = current
+                h = landmark_heuristic(neighbor, end_variants)
+                f = tentative_g + h
+                counter += 1
+                heapq.heappush(open_set, (f, counter, neighbor))
+
+    end_time = time.perf_counter()
+
+    if dst not in g_score:
+        return [], math.inf, end_time - start_time, nodes_explored
+
+    path = reconstruct_path(previous, src, dst)
+    return strip_virtual_nodes(path), g_score[dst], end_time - start_time, nodes_explored
