@@ -233,3 +233,99 @@ def run_dijkstra(start_station, end_station):
 
     path = reconstruct_path(previous, src, dst)
     return strip_virtual_nodes(path), distances[dst], end_time - start_time, nodes_explored
+
+# Bidirectional Dijkstra's
+def run_bidirectional_dijkstra(start_station, end_station):
+    H, src, dst = build_query_graph(start_station, end_station)
+
+    start_time = time.perf_counter()
+
+    dist_f = {src: 0}
+    dist_b = {dst: 0}
+    prev_f = {}
+    prev_b = {}
+    visited_f = set()
+    visited_b = set()
+
+    counter_f = 0
+    counter_b = 0
+    pq_f = [(0, counter_f, src)]
+    pq_b = [(0, counter_b, dst)]
+
+    best_meeting = None
+    best_distance = math.inf
+    nodes_explored = 0
+
+    while pq_f and pq_b:
+        if pq_f:
+            d_f, _, u = heapq.heappop(pq_f)
+
+            if u not in visited_f:
+                visited_f.add(u)
+                nodes_explored += 1
+
+                if u in dist_b:
+                    candidate = dist_f[u] + dist_b[u]
+                    if candidate < best_distance:
+                        best_distance = candidate
+                        best_meeting = u
+
+                for v in H.neighbors(u):
+                    w = H[u][v]["weight"]
+                    nd = dist_f[u] + w
+
+                    if v not in dist_f or nd < dist_f[v]:
+                        dist_f[v] = nd
+                        prev_f[v] = u
+                        counter_f += 1
+                        heapq.heappush(pq_f, (nd, counter_f, v))
+
+        if pq_b:
+            d_b, _, u = heapq.heappop(pq_b)
+
+            if u not in visited_b:
+                visited_b.add(u)
+                nodes_explored += 1
+
+                if u in dist_f:
+                    candidate = dist_f[u] + dist_b[u]
+                    if candidate < best_distance:
+                        best_distance = candidate
+                        best_meeting = u
+
+                for v in H.neighbors(u):
+                    w = H[u][v]["weight"]
+                    nd = dist_b[u] + w
+
+                    if v not in dist_b or nd < dist_b[v]:
+                        dist_b[v] = nd
+                        prev_b[v] = u
+                        counter_b += 1
+                        heapq.heappush(pq_b, (nd, counter_b, v))
+
+        min_f = pq_f[0][0] if pq_f else math.inf
+        min_b = pq_b[0][0] if pq_b else math.inf
+
+        if min_f + min_b >= best_distance:
+            break
+
+    end_time = time.perf_counter()
+
+    if best_meeting is None:
+        return [], math.inf, end_time - start_time, nodes_explored
+
+    path_forward = reconstruct_path(prev_f, src, best_meeting)
+    if not path_forward:
+        return [], math.inf, end_time - start_time, nodes_explored
+
+    backward_part = []
+    current = best_meeting
+    while current != dst:
+        if current not in prev_b:
+            return [], math.inf, end_time - start_time, nodes_explored
+        current = prev_b[current]
+        backward_part.append(current)
+
+    full_path = path_forward + backward_part
+    return strip_virtual_nodes(full_path), best_distance, end_time - start_time, nodes_explored
+
