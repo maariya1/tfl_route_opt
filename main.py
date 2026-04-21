@@ -390,3 +390,119 @@ def run_astar(start_station, end_station):
 
     path = reconstruct_path(previous, src, dst)
     return strip_virtual_nodes(path), g_score[dst], end_time - start_time, nodes_explored
+
+# Frankenalgorithm
+#  Dijkstra's shortest path logic
+# Bidirectional search
+#  A* heuristic guidance
+#  landmark preprocessing inspired by Floyd-Warshall
+# cheaper preprocessing
+
+def run_frankenalgorithm(start_station, end_station):
+    H, src, dst = build_query_graph(start_station, end_station)
+
+    start_variants = variants(start_station)
+    end_variants = variants(end_station)
+
+    start_time = time.perf_counter()
+
+    g_f = {src: 0}
+    g_b = {dst: 0}
+    prev_f = {}
+    prev_b = {}
+    visited_f = set()
+    visited_b = set()
+
+    pq_f = []
+    pq_b = []
+    counter = 0
+
+    heapq.heappush(pq_f, (0, counter, src))
+    counter += 1
+    heapq.heappush(pq_b, (0, counter, dst))
+    counter += 1
+
+    best_distance = math.inf
+    best_meeting = None
+    nodes_explored = 0
+
+    def forward_h(node):
+        return landmark_heuristic(node, end_variants)
+
+    def backward_h(node):
+        return landmark_heuristic(node, start_variants)
+
+    while pq_f and pq_b:
+        if pq_f:
+            _, _, u = heapq.heappop(pq_f)
+
+            if u not in visited_f:
+                visited_f.add(u)
+                nodes_explored += 1
+
+                if u in g_b:
+                    candidate = g_f[u] + g_b[u]
+                    if candidate < best_distance:
+                        best_distance = candidate
+                        best_meeting = u
+
+                for v in H.neighbors(u):
+                    w = H[u][v]["weight"]
+                    tentative_g = g_f[u] + w
+
+                    if v not in g_f or tentative_g < g_f[v]:
+                        g_f[v] = tentative_g
+                        prev_f[v] = u
+                        f_score = tentative_g + forward_h(v)
+                        counter += 1
+                        heapq.heappush(pq_f, (f_score, counter, v))
+
+        if pq_b:
+            _, _, u = heapq.heappop(pq_b)
+
+            if u not in visited_b:
+                visited_b.add(u)
+                nodes_explored += 1
+
+                if u in g_f:
+                    candidate = g_f[u] + g_b[u]
+                    if candidate < best_distance:
+                        best_distance = candidate
+                        best_meeting = u
+
+                for v in H.neighbors(u):
+                    w = H[u][v]["weight"]
+                    tentative_g = g_b[u] + w
+
+                    if v not in g_b or tentative_g < g_b[v]:
+                        g_b[v] = tentative_g
+                        prev_b[v] = u
+                        f_score = tentative_g + backward_h(v)
+                        counter += 1
+                        heapq.heappush(pq_b, (f_score, counter, v))
+
+        min_f = pq_f[0][0] if pq_f else math.inf
+        min_b = pq_b[0][0] if pq_b else math.inf
+
+        if min_f + min_b >= best_distance:
+            break
+
+    end_time = time.perf_counter()
+
+    if best_meeting is None:
+        return [], math.inf, end_time - start_time, nodes_explored
+
+    path_forward = reconstruct_path(prev_f, src, best_meeting)
+    if not path_forward:
+        return [], math.inf, end_time - start_time, nodes_explored
+
+    backward_part = []
+    current = best_meeting
+    while current != dst:
+        if current not in prev_b:
+            return [], math.inf, end_time - start_time, nodes_explored
+        current = prev_b[current]
+        backward_part.append(current)
+
+    full_path = path_forward + backward_part
+    return strip_virtual_nodes(full_path), best_distance, end_time - start_time, nodes_explored
