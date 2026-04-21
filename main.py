@@ -506,3 +506,85 @@ def run_frankenalgorithm(start_station, end_station):
 
     full_path = path_forward + backward_part
     return strip_virtual_nodes(full_path), best_distance, end_time - start_time, nodes_explored
+
+# Printing results
+def print_result(name, path, travel_time, runtime, nodes_explored):
+    print("\n" + "=" * 60)
+    print(name.upper())
+    print("=" * 60)
+
+    if not path:
+        print("No path found.")
+        return
+
+    print("Route:")
+    print(format_route_segments(path))
+    print(f"\nTotal travel time: {travel_time:.0f} minutes")
+    print(f"Algorithm runtime: {runtime:.6f} seconds")
+    print(f"Nodes explored: {nodes_explored}")
+
+    if name.lower() == "floyd-warshall":
+        print("Note: Floyd-Warshall computes paths across the whole graph.")
+
+
+def print_summary(results):
+    print("\n" + "=" * 60)
+    print("PERFORMANCE SUMMARY")
+    print("=" * 60)
+
+    sorted_time = sorted(results.items(), key=lambda x: x[1]["runtime"])
+    print("\nTime taken (fastest -> slowest):")
+    for name, data in sorted_time:
+        print(f"{name}: {data['runtime']:.6f} s")
+
+    sorted_nodes = sorted(results.items(), key=lambda x: x[1]["nodes"])
+    print("\nNodes explored (least -> most):")
+    for name, data in sorted_nodes:
+        print(f"{name}: {data['nodes']}")
+
+# main
+def main():
+    print("TfL Shortest Path Comparison Tool")
+    print("-" * 40)
+
+    preprocess_landmarks()
+
+    start_station = input("What is the starting station? ")
+    end_station = input("What is your destination? ")
+
+    try:
+        start_station = canon(start_station)
+        end_station = canon(end_station)
+
+        print(f"\nFinding routes from {start_station} to {end_station}...")
+
+        results = {}
+
+        path, travel_time, runtime, nodes = run_dijkstra(start_station, end_station)
+        print_result("Dijkstra", path, travel_time, runtime, nodes)
+        results["Dijkstra"] = {"runtime": runtime, "nodes": nodes}
+
+        path, travel_time, runtime, nodes = run_bidirectional_dijkstra(start_station, end_station)
+        print_result("Bidirectional Dijkstra", path, travel_time, runtime, nodes)
+        results["Bidirectional Dijkstra"] = {"runtime": runtime, "nodes": nodes}
+
+        path, travel_time, runtime, nodes = run_floyd_warshall(start_station, end_station)
+        print_result("Floyd-Warshall", path, travel_time, runtime, nodes)
+        results["Floyd-Warshall"] = {"runtime": runtime, "nodes": nodes}
+
+        path, travel_time, runtime, nodes = run_astar(start_station, end_station)
+        print_result("A*", path, travel_time, runtime, nodes)
+        results["A*"] = {"runtime": runtime, "nodes": nodes}
+
+        path, travel_time, runtime, nodes = run_frankenalgorithm(start_station, end_station)
+        print_result("FrankenAlgorithm", path, travel_time, runtime, nodes)
+        results["FrankenAlgorithm"] = {"runtime": runtime, "nodes": nodes}
+
+        print_summary(results)
+
+    except Exception as e:
+        print(f"\nError: {e}")
+
+
+if __name__ == "__main__":
+    main()
